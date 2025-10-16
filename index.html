@@ -102,6 +102,22 @@
             display: block;
         }
         
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
         .table-wrapper {
             overflow-x: auto;
             max-height: 600px;
@@ -138,6 +154,20 @@
         
         .feriado {
             background: #fff3cd !important;
+        }
+        
+        .nao-trocar {
+            background: #f8d7da !important;
+        }
+        
+        .checkbox-cell {
+            text-align: center;
+        }
+        
+        .checkbox-cell input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
         }
         
         .form-section {
@@ -190,6 +220,34 @@
         textarea {
             resize: vertical;
             min-height: 60px;
+        }
+        
+        .dates-selection {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+        }
+        
+        .date-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .date-checkbox:hover {
+            background: #f8f9fa;
+        }
+        
+        .date-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
         }
         
         .btn {
@@ -259,6 +317,7 @@
         .action-buttons {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
         
         .alert {
@@ -278,6 +337,12 @@
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
         }
         
         .instructions {
@@ -343,6 +408,49 @@
         #loginScreen {
             display: block;
         }
+
+        .date-selector-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #212529;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -393,12 +501,29 @@
             
             <div id="escala" class="tab-content active">
                 <div class="instructions">
-                    <h3>📋 Como usar o sistema de trocas</h3>
+                    <h3>📋 Como usar a escala</h3>
                     <ul>
                         <li>Consulte sua escala aqui</li>
-                        <li>Para solicitar troca, vá na aba "Solicitações de Troca"</li>
+                        <li>Use os filtros para encontrar datas ou pessoas específicas</li>
                         <li>Datas em amarelo são feriados</li>
+                        <li>Marque as datas que você NÃO quer trocar (ficarão em vermelho)</li>
                     </ul>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-group form-group">
+                        <label>Filtrar por Nome:</label>
+                        <select id="filterName" onchange="filterEscala()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group form-group">
+                        <label>Filtrar por Data:</label>
+                        <input type="text" id="filterDate" placeholder="Ex: 23/out" oninput="filterEscala()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="btn btn-primary" onclick="clearFilters()">Limpar Filtros</button>
+                    </div>
                 </div>
                 
                 <div class="table-wrapper">
@@ -408,7 +533,9 @@
                                 <th>Data</th>
                                 <th>Dia</th>
                                 <th>Plantão Curto</th>
+                                <th>Não Trocar (Curto)</th>
                                 <th>Plantão Longo</th>
+                                <th>Não Trocar (Longo)</th>
                                 <th>Feriado</th>
                             </tr>
                         </thead>
@@ -421,9 +548,9 @@
                 <div class="instructions">
                     <h3>🔄 Como solicitar uma troca</h3>
                     <ul>
-                        <li>Preencha o formulário abaixo com seus dados</li>
-                        <li>A pessoa escalada no dia desejado receberá a solicitação</li>
-                        <li>Aguarde a resposta (Aprovada ou Recusada)</li>
+                        <li>Selecione o plantão que você DESEJA (data e tipo)</li>
+                        <li>Selecione TODAS as datas suas que você está disposto a oferecer em troca</li>
+                        <li>O destinatário poderá escolher qual das suas datas ele prefere</li>
                     </ul>
                 </div>
                 
@@ -431,33 +558,23 @@
                     <div class="form-title">Nova Solicitação de Troca</div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Data do SEU Plantão *</label>
-                            <select id="dataSolicitante">
-                                <option value="">Selecione...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo do SEU Plantão *</label>
-                            <select id="tipoSolicitante">
-                                <option value="">Selecione...</option>
-                                <option value="Curto">Plantão Curto</option>
-                                <option value="Longo">Plantão Longo</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Data DESEJADA para trocar *</label>
+                            <label>Plantão DESEJADO - Data *</label>
                             <select id="dataDesejada">
                                 <option value="">Selecione...</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Tipo do Plantão DESEJADO *</label>
+                            <label>Plantão DESEJADO - Tipo *</label>
                             <select id="tipoDesejado">
                                 <option value="">Selecione...</option>
                                 <option value="Curto">Plantão Curto</option>
                                 <option value="Longo">Plantão Longo</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Suas Datas Disponíveis para Oferecer (selecione todas que aceita trocar) *</label>
+                        <div class="dates-selection" id="datasDisponiveis"></div>
                     </div>
                     <div class="form-group">
                         <label>Observações (opcional)</label>
@@ -475,8 +592,8 @@
                             <tr>
                                 <th>Data</th>
                                 <th>Solicitante</th>
-                                <th>Plantão Oferecido</th>
-                                <th>Plantão Desejado (seu)</th>
+                                <th>Quer Trocar</th>
+                                <th>Datas Oferecidas</th>
                                 <th>Status</th>
                                 <th>Observações</th>
                                 <th>Ações</th>
@@ -493,9 +610,10 @@
                             <tr>
                                 <th>Data</th>
                                 <th>Destinatário</th>
-                                <th>Meu Plantão</th>
                                 <th>Plantão Desejado</th>
+                                <th>Minhas Datas Oferecidas</th>
                                 <th>Status</th>
+                                <th>Data Escolhida</th>
                                 <th>Observações</th>
                             </tr>
                         </thead>
@@ -510,7 +628,6 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>Data da Troca</th>
                                 <th>Pessoa 1</th>
                                 <th>Plantão Pessoa 1</th>
                                 <th>Pessoa 2</th>
@@ -525,60 +642,197 @@
         </div>
     </div>
 
+    <!-- Modal para selecionar data específica -->
+    <div id="dateSelectModal" class="date-selector-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Selecione a data que você prefere</h3>
+                <button class="close-modal" onclick="closeDateModal()">×</button>
+            </div>
+            <div id="modalDatesContainer"></div>
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button class="btn btn-success" onclick="confirmDateSelection()">Confirmar</button>
+                <button class="btn btn-danger" onclick="closeDateModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, onSnapshot, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, onSnapshot, orderBy, serverTimestamp, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         // ⚠️ IMPORTANTE: Substitua estas configurações pelas suas do Firebase Console
         const firebaseConfig = {
-          apiKey: "AIzaSyB2VLDwcdyYZBhlG2qsmmOUoCzZfbbjOWw",
-          authDomain: "planta-gigante.firebaseapp.com",
-          projectId: "planta-gigante",
-          storageBucket: "planta-gigante.firebasestorage.app",
-          messagingSenderId: "189146589353",
-          appId: "1:189146589353:web:9da435b2a8cc6dc78f21b8"
+            apiKey: "SUA_API_KEY_AQUI",
+            authDomain: "seu-projeto.firebaseapp.com",
+            projectId: "seu-projeto-id",
+            storageBucket: "seu-projeto.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
         };
 
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Datas de feriados
+        const feriados = ['27/out.', '28/out.', '20/nov.', '21/nov.', '08/dez.', '25/dez.', '01/jan.', '02/jan.'];
+
         // Dados da escala completa
         const escalaData = [
-            ["23/out.", "Quinta", "Rian Henrico Alves Ferreira", "Thaisa Ramos Freire", "Não"],
-            ["24/out.", "Sexta", "Bárbara Geovanna Farias Damião", "Daniella Martins de Oliveira", "Não"],
-            ["25/out.", "Sábado", "Marilia Escrivani de Almeida Petrillo", "Luís Eduardo Gauer", "Não"],
-            ["26/out.", "Domingo", "Liane Venesia Da Silva", "Marcos Antônio Faria", "Não"],
-            ["27/out.", "Segunda", "Lucas Catarino Garcia", "João Vítor Almeida das Virgens", "Sim"],
-            ["28/out.", "Terça", "Marilia Escrivani de Almeida Petrillo", "Isabella Colombani", "Sim"],
-            ["29/out.", "Quarta", "Luís Eduardo Gauer", "Daniella Martins de Oliveira", "Não"],
-            ["30/out.", "Quinta", "Pedro Henrique de Moraes Moreira", "Rian Henrico Alves Ferreira", "Não"],
-            ["31/out.", "Sexta", "Jose Paulo Sonda Sampaio", "Thaisa Ramos Freire", "Não"],
-            ["01/nov.", "Sábado", "Ana Laura de Oliveira Carvalho", "Luís Eduardo Gauer", "Não"],
-            ["02/nov.", "Domingo", "Bárbara Geovanna Farias Damião", "Daniella Martins de Oliveira", "Não"],
-            ["03/nov.", "Segunda", "Ana Laura de Oliveira Carvalho", "Marcos Antônio Faria", "Não"],
-            ["04/nov.", "Terça", "Marilia Escrivani de Almeida Petrillo", "João Vítor Almeida das Virgens", "Não"],
-            ["05/nov.", "Quarta", "Luís Eduardo Gauer", "Isabella Colombani", "Não"],
-            ["06/nov.", "Quinta", "Jose Paulo Sonda Sampaio", "Liane Venesia Da Silva", "Não"],
-            ["07/nov.", "Sexta", "Ana Laura de Oliveira Carvalho", "Rian Henrico Alves Ferreira", "Não"],
-            ["08/nov.", "Sábado", "Lucas Catarino Garcia", "Marilia Escrivani de Almeida Petrillo", "Não"],
-            ["09/nov.", "Domingo", "Bárbara Geovanna Farias Damião", "Thaisa Ramos Freire", "Não"],
-            ["10/nov.", "Segunda", "Lucas Catarino Garcia", "Liane Venesia Da Silva", "Não"],
-            ["11/nov.", "Terça", "Marilia Escrivani de Almeida Petrillo", "Marcos Antônio Faria", "Não"],
-            ["12/nov.", "Quarta", "Luís Eduardo Gauer", "João Vítor Almeida das Virgens", "Não"],
-            ["13/nov.", "Quinta", "Thaisa Ramos Freire", "Isabella Colombani", "Não"],
-            ["14/nov.", "Sexta", "Pedro Henrique de Moraes Moreira", "Liane Venesia Da Silva", "Não"],
-            ["15/nov.", "Sábado", "Ana Laura de Oliveira Carvalho", "Jose Paulo Sonda Sampaio", "Não"],
-            ["16/nov.", "Domingo", "Pedro Henrique de Moraes Moreira", "Rian Henrico Alves Ferreira", "Não"],
-            ["17/nov.", "Segunda", "Thaisa Ramos Freire", "Luís Eduardo Gauer", "Não"],
-            ["18/nov.", "Terça", "Daniella Martins de Oliveira", "Jose Paulo Sonda Sampaio", "Não"],
-            ["19/nov.", "Quarta", "Marcos Antônio Faria", "Ana Laura de Oliveira Carvalho", "Não"],
-            ["20/nov.", "Quinta", "João Vítor Almeida das Virgens", "Liane Venesia Da Silva", "Sim"],
-            ["21/nov.", "Sexta", "Isabella Colombani", "Lucas Catarino Garcia", "Sim"]
+            ["23/out.", "Quinta", "Rian Henrico Alves Ferreira", "Thaisa Ramos Freire"],
+            ["24/out.", "Sexta", "Bárbara Geovanna Farias Damião", "Daniella Martins de Oliveira"],
+            ["25/out.", "Sábado", "Marilia Escrivani de Almeida Petrillo", "Luís Eduardo Gauer"],
+            ["26/out.", "Domingo", "Liane Venesia Da Silva", "Marcos Antônio Faria"],
+            ["27/out.", "Segunda", "Lucas Catarino Garcia", "João Vítor Almeida das Virgens"],
+            ["28/out.", "Terça", "Marilia Escrivani de Almeida Petrillo", "Isabella Colombani"],
+            ["29/out.", "Quarta", "Luís Eduardo Gauer", "Daniella Martins de Oliveira"],
+            ["30/out.", "Quinta", "Pedro Henrique de Moraes Moreira", "Rian Henrico Alves Ferreira"],
+            ["31/out.", "Sexta", "Jose Paulo Sonda Sampaio", "Thaisa Ramos Freire"],
+            ["01/nov.", "Sábado", "Ana Laura de Oliveira Carvalho", "Luís Eduardo Gauer"],
+            ["02/nov.", "Domingo", "Bárbara Geovanna Farias Damião", "Daniella Martins de Oliveira"],
+            ["03/nov.", "Segunda", "Ana Laura de Oliveira Carvalho", "Marcos Antônio Faria"],
+            ["04/nov.", "Terça", "Marilia Escrivani de Almeida Petrillo", "João Vítor Almeida das Virgens"],
+            ["05/nov.", "Quarta", "Luís Eduardo Gauer", "Isabella Colombani"],
+            ["06/nov.", "Quinta", "Jose Paulo Sonda Sampaio", "Liane Venesia Da Silva"],
+            ["07/nov.", "Sexta", "Ana Laura de Oliveira Carvalho", "Rian Henrico Alves Ferreira"],
+            ["08/nov.", "Sábado", "Lucas Catarino Garcia", "Marilia Escrivani de Almeida Petrillo"],
+            ["09/nov.", "Domingo", "Bárbara Geovanna Farias Damião", "Thaisa Ramos Freire"],
+            ["10/nov.", "Segunda", "Lucas Catarino Garcia", "Liane Venesia Da Silva"],
+            ["11/nov.", "Terça", "Marilia Escrivani de Almeida Petrillo", "Marcos Antônio Faria"],
+            ["12/nov.", "Quarta", "Luís Eduardo Gauer", "João Vítor Almeida das Virgens"],
+            ["13/nov.", "Quinta", "Thaisa Ramos Freire", "Isabella Colombani"],
+            ["14/nov.", "Sexta", "Pedro Henrique de Moraes Moreira", "Liane Venesia Da Silva"],
+            ["15/nov.", "Sábado", "Ana Laura de Oliveira Carvalho", "Jose Paulo Sonda Sampaio"],
+            ["16/nov.", "Domingo", "Pedro Henrique de Moraes Moreira", "Rian Henrico Alves Ferreira"],
+            ["17/nov.", "Segunda", "Thaisa Ramos Freire", "Luís Eduardo Gauer"],
+            ["18/nov.", "Terça", "Daniella Martins de Oliveira", "Jose Paulo Sonda Sampaio"],
+            ["19/nov.", "Quarta", "Marcos Antônio Faria", "Ana Laura de Oliveira Carvalho"],
+            ["20/nov.", "Quinta", "João Vítor Almeida das Virgens", "Liane Venesia Da Silva"],
+            ["21/nov.", "Sexta", "Isabella Colombani", "Lucas Catarino Garcia"],
+            ["22/nov.", "Sábado", "Daniella Martins de Oliveira", "Thaisa Ramos Freire"],
+            ["23/nov.", "Domingo", "Rian Henrico Alves Ferreira", "Pedro Henrique de Moraes Moreira"],
+            ["24/nov.", "Segunda", "Daniella Martins de Oliveira", "Lucas Catarino Garcia"],
+            ["25/nov.", "Terça", "João Vítor Almeida das Virgens", "Jose Paulo Sonda Sampaio"],
+            ["26/nov.", "Quarta", "Isabella Colombani", "Ana Laura de Oliveira Carvalho"],
+            ["27/nov.", "Quinta", "Liane Venesia Da Silva", "Bárbara Geovanna Farias Damião"],
+            ["28/nov.", "Sexta", "Rian Henrico Alves Ferreira", "Lucas Catarino Garcia"],
+            ["29/nov.", "Sábado", "Marilia Escrivani de Almeida Petrillo", "Marcos Antônio Faria"],
+            ["30/nov.", "Domingo", "Luís Eduardo Gauer", "Pedro Henrique de Moraes Moreira"],
+            ["01/dez.", "Segunda", "Bárbara Geovanna Farias Damião", "Jose Paulo Sonda Sampaio"],
+            ["02/dez.", "Terça", "Pedro Henrique de Moraes Moreira", "Ana Laura de Oliveira Carvalho"],
+            ["03/dez.", "Quarta", "Liane Venesia Da Silva", "Marilia Escrivani de Almeida Petrillo"],
+            ["04/dez.", "Quinta", "Ana Laura de Oliveira Carvalho", "Pedro Henrique de Moraes Moreira"],
+            ["05/dez.", "Sexta", "Lucas Catarino Garcia", "Bárbara Geovanna Farias Damião"],
+            ["06/dez.", "Sábado", "Marcos Antônio Faria", "João Vítor Almeida das Virgens"],
+            ["07/dez.", "Domingo", "Jose Paulo Sonda Sampaio", "Isabella Colombani"],
+            ["08/dez.", "Segunda", "Daniella Martins de Oliveira", "Bárbara Geovanna Farias Damião"],
+            ["09/dez.", "Terça", "Thaisa Ramos Freire", "Rian Henrico Alves Ferreira"],
+            ["10/dez.", "Quarta", "Luís Eduardo Gauer", ""],
+            ["11/dez.", "Quinta", "Bárbara Geovanna Farias Damião", ""],
+            ["12/dez.", "Sexta", "Jose Paulo Sonda Sampaio", ""],
+            ["13/dez.", "Sábado", "Lucas Catarino Garcia", "Pedro Henrique de Moraes Moreira"],
+            ["14/dez.", "Domingo", "Ana Laura de Oliveira Carvalho", "Marilia Escrivani de Almeida Petrillo"],
+            ["15/dez.", "Segunda", "Pedro Henrique de Moraes Moreira", ""],
+            ["16/dez.", "Terça", "Bárbara Geovanna Farias Damião", ""],
+            ["17/dez.", "Quarta", "Ana Laura de Oliveira Carvalho", ""],
+            ["18/dez.", "Quinta", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["19/dez.", "Sexta", "Luís Eduardo Gauer", ""],
+            ["20/dez.", "Sábado", "Lucas Catarino Garcia", "Ana Laura de Oliveira Carvalho"],
+            ["21/dez.", "Domingo", "Marilia Escrivani de Almeida Petrillo", "Bárbara Geovanna Farias Damião"],
+            ["22/dez.", "Segunda", "Lucas Catarino Garcia", ""],
+            ["23/dez.", "Terça", "Jose Paulo Sonda Sampaio", ""],
+            ["24/dez.", "Quarta", "Pedro Henrique de Moraes Moreira", ""],
+            ["25/dez.", "Quinta", "Luís Eduardo Gauer", "Lucas Catarino Garcia"],
+            ["26/dez.", "Sexta", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["27/dez.", "Sábado", "Luís Eduardo Gauer", "Bárbara Geovanna Farias Damião"],
+            ["28/dez.", "Domingo", "Jose Paulo Sonda Sampaio", "Ana Laura de Oliveira Carvalho"],
+            ["29/dez.", "Segunda", "Lucas Catarino Garcia", ""],
+            ["30/dez.", "Terça", "Luís Eduardo Gauer", ""],
+            ["31/dez.", "Quarta", "Jose Paulo Sonda Sampaio", ""],
+            ["01/jan.", "Quinta", "Ana Laura de Oliveira Carvalho", "Pedro Henrique de Moraes Moreira"],
+            ["02/jan.", "Sexta", "Bárbara Geovanna Farias Damião", "Marilia Escrivani de Almeida Petrillo"],
+            ["03/jan.", "Sábado", "Lucas Catarino Garcia", "Luís Eduardo Gauer"],
+            ["04/jan.", "Domingo", "Pedro Henrique de Moraes Moreira", "Jose Paulo Sonda Sampaio"],
+            ["05/jan.", "Segunda", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["06/jan.", "Terça", "Pedro Henrique de Moraes Moreira", ""],
+            ["07/jan.", "Quarta", "Luís Eduardo Gauer", ""],
+            ["08/jan.", "Quinta", "Ana Laura de Oliveira Carvalho", ""],
+            ["09/jan.", "Sexta", "Bárbara Geovanna Farias Damião", ""],
+            ["10/jan.", "Sábado", "Luís Eduardo Gauer", "Jose Paulo Sonda Sampaio"],
+            ["11/jan.", "Domingo", "Ana Laura de Oliveira Carvalho", "Lucas Catarino Garcia"],
+            ["12/jan.", "Segunda", "Jose Paulo Sonda Sampaio", ""],
+            ["13/jan.", "Terça", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["14/jan.", "Quarta", "Lucas Catarino Garcia", ""],
+            ["15/jan.", "Quinta", "Bárbara Geovanna Farias Damião", ""],
+            ["16/jan.", "Sexta", "Luís Eduardo Gauer", "Pedro Henrique de Moraes Moreira"],
+            ["17/jan.", "Sábado", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["18/jan.", "Domingo", "Bárbara Geovanna Farias Damião", "Jose Paulo Sonda Sampaio"],
+            ["19/jan.", "Segunda", "Pedro Henrique de Moraes Moreira", ""],
+            ["20/jan.", "Terça", "Ana Laura de Oliveira Carvalho", ""],
+            ["21/jan.", "Quarta", "Luís Eduardo Gauer", ""],
+            ["22/jan.", "Quinta", "Marilia Escrivani de Almeida Petrillo", ""],
+            ["23/jan.", "Sexta", "Lucas Catarino Garcia", "Ana Laura de Oliveira Carvalho"],
+            ["24/jan.", "Sábado", "Jose Paulo Sonda Sampaio", ""],
+            ["25/jan.", "Domingo", "Pedro Henrique de Moraes Moreira", "Lucas Catarino Garcia"],
+            ["26/jan.", "Segunda", "Bárbara Geovanna Farias Damião", ""],
+            ["27/jan.", "Terça", "Ana Laura de Oliveira Carvalho", ""],
+            ["28/jan.", "Quarta", "Jose Paulo Sonda Sampaio", ""],
+            ["29/jan.", "Quinta", "Pedro Henrique de Moraes Moreira", ""],
+            ["30/jan.", "Sexta", "Luís Eduardo Gauer", ""],
+            ["31/jan.", "Sábado", "Marilia Escrivani de Almeida Petrillo", "Bárbara Geovanna Farias Damião"],
+            ["01/fev.", "Domingo", "Lucas Catarino Garcia", "Luís Eduardo Gauer"]
         ];
 
         let currentUser = null;
+        let naoTrocarDates = {};
+        let currentSolicitacaoId = null;
+        let selectedOfferDate = null;
+
+        // Carregar preferências de não trocar
+        async function loadNaoTrocarPreferences() {
+            try {
+                const q = query(collection(db, 'naoTrocar'));
+                const snapshot = await getDocs(q);
+                naoTrocarDates = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const key = `${data.pessoa}_${data.data}_${data.tipo}`;
+                    naoTrocarDates[key] = true;
+                });
+            } catch (error) {
+                console.error('Erro ao carregar preferências:', error);
+            }
+        }
+
+        // Verificar se uma data está marcada como não trocar
+        function isNaoTrocar(pessoa, data, tipo) {
+            const key = `${pessoa}_${data}_${tipo}`;
+            return naoTrocarDates[key] || false;
+        }
+
+        // Salvar preferência de não trocar
+        async function toggleNaoTrocar(pessoa, data, tipo, checked) {
+            const key = `${pessoa}_${data}_${tipo}`;
+            try {
+                if (checked) {
+                    await setDoc(doc(db, 'naoTrocar', key), {
+                        pessoa,
+                        data,
+                        tipo
+                    });
+                    naoTrocarDates[key] = true;
+                } else {
+                    await updateDoc(doc(db, 'naoTrocar', key), {
+                        deleted: true
+                    });
+                    delete naoTrocarDates[key];
+                }
+            } catch (error) {
+                console.error('Erro ao salvar preferência:', error);
+            }
+        }
 
         // Carregar escala
         function loadEscala() {
@@ -587,47 +841,181 @@
             
             escalaData.forEach(row => {
                 const tr = document.createElement('tr');
-                if (row[4] === 'Sim') tr.classList.add('feriado');
+                const isFeriado = feriados.includes(row[0]);
+                if (isFeriado) tr.classList.add('feriado');
                 
-                row.forEach(cell => {
-                    const td = document.createElement('td');
-                    td.textContent = cell;
-                    tr.appendChild(td);
-                });
+                // Data
+                const tdData = document.createElement('td');
+                tdData.textContent = row[0];
+                tr.appendChild(tdData);
+                
+                // Dia
+                const tdDia = document.createElement('td');
+                tdDia.textContent = row[1];
+                tr.appendChild(tdDia);
+                
+                // Plantão Curto
+                const tdCurto = document.createElement('td');
+                tdCurto.textContent = row[2];
+                tr.appendChild(tdCurto);
+                
+                // Checkbox Não Trocar (Curto)
+                const tdCheckCurto = document.createElement('td');
+                tdCheckCurto.className = 'checkbox-cell';
+                if (row[2] === currentUser) {
+                    const checkCurto = document.createElement('input');
+                    checkCurto.type = 'checkbox';
+                    checkCurto.checked = isNaoTrocar(currentUser, row[0], 'Curto');
+                    checkCurto.onchange = function() {
+                        toggleNaoTrocar(currentUser, row[0], 'Curto', this.checked);
+                        if (this.checked) {
+                            tr.classList.add('nao-trocar');
+                        } else {
+                            tr.classList.remove('nao-trocar');
+                        }
+                    };
+                    tdCheckCurto.appendChild(checkCurto);
+                    if (checkCurto.checked) tr.classList.add('nao-trocar');
+                } else {
+                    tdCheckCurto.textContent = '-';
+                }
+                tr.appendChild(tdCheckCurto);
+                
+                // Plantão Longo
+                const tdLongo = document.createElement('td');
+                tdLongo.textContent = row[3] || '-';
+                tr.appendChild(tdLongo);
+                
+                // Checkbox Não Trocar (Longo)
+                const tdCheckLongo = document.createElement('td');
+                tdCheckLongo.className = 'checkbox-cell';
+                if (row[3] === currentUser) {
+                    const checkLongo = document.createElement('input');
+                    checkLongo.type = 'checkbox';
+                    checkLongo.checked = isNaoTrocar(currentUser, row[0], 'Longo');
+                    checkLongo.onchange = function() {
+                        toggleNaoTrocar(currentUser, row[0], 'Longo', this.checked);
+                        if (this.checked) {
+                            tr.classList.add('nao-trocar');
+                        } else {
+                            tr.classList.remove('nao-trocar');
+                        }
+                    };
+                    tdCheckLongo.appendChild(checkLongo);
+                    if (checkLongo.checked) tr.classList.add('nao-trocar');
+                } else {
+                    tdCheckLongo.textContent = '-';
+                }
+                tr.appendChild(tdCheckLongo);
+                
+                // Feriado
+                const tdFeriado = document.createElement('td');
+                tdFeriado.textContent = isFeriado ? 'Sim' : 'Não';
+                tr.appendChild(tdFeriado);
                 
                 tbody.appendChild(tr);
             });
         }
 
-        // Carregar dropdowns de datas
-        function loadDateDropdowns() {
+        // Filtrar escala
+        window.filterEscala = function() {
+            const filterName = document.getElementById('filterName').value.toLowerCase();
+            const filterDate = document.getElementById('filterDate').value.toLowerCase();
+            const tbody = document.getElementById('escalaBody');
+            const rows = tbody.getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                const cells = row.getElementsByTagName('td');
+                const data = cells[0].textContent.toLowerCase();
+                const curto = cells[2].textContent.toLowerCase();
+                const longo = cells[4].textContent.toLowerCase();
+                
+                const matchDate = !filterDate || data.includes(filterDate);
+                const matchName = !filterName || curto.includes(filterName) || longo.includes(filterName);
+                
+                row.style.display = (matchDate && matchName) ? '' : 'none';
+            }
+        };
+
+        window.clearFilters = function() {
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterDate').value = '';
+            filterEscala();
+        };
+
+        // Carregar dropdowns
+        function loadDropdowns() {
+            const pessoas = new Set();
             const datas = [];
             
             escalaData.forEach(row => {
+                pessoas.add(row[2]);
+                if (row[3]) pessoas.add(row[3]);
                 datas.push(row[0] + ' - ' + row[1]);
             });
             
-            const dataSolicitanteSelect = document.getElementById('dataSolicitante');
+            // Filtro de nomes
+            const filterNameSelect = document.getElementById('filterName');
+            filterNameSelect.innerHTML = '<option value="">Todos</option>';
+            Array.from(pessoas).sort().forEach(pessoa => {
+                const option = document.createElement('option');
+                option.value = pessoa;
+                option.textContent = pessoa;
+                filterNameSelect.appendChild(option);
+            });
+            
+            // Data desejada
             const dataDesejadaSelect = document.getElementById('dataDesejada');
-            
-            dataSolicitanteSelect.innerHTML = '<option value="">Selecione...</option>';
             dataDesejadaSelect.innerHTML = '<option value="">Selecione...</option>';
-            
             datas.forEach(data => {
-                const opt1 = document.createElement('option');
-                opt1.value = data;
-                opt1.textContent = data;
-                dataSolicitanteSelect.appendChild(opt1);
+                const opt = document.createElement('option');
+                opt.value = data;
+                opt.textContent = data;
+                dataDesejadaSelect.appendChild(opt);
+            });
+        }
+
+        // Carregar datas disponíveis do usuário
+        function loadUserAvailableDates() {
+            const container = document.getElementById('datasDisponiveis');
+            container.innerHTML = '';
+            
+            escalaData.forEach(row => {
+                // Verificar se o usuário está nesta data (curto ou longo)
+                if (row[2] === currentUser) {
+                    const div = document.createElement('div');
+                    div.className = 'date-checkbox';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = `${row[0]}_Curto`;
+                    checkbox.id = `date_${row[0]}_Curto`;
+                    const label = document.createElement('label');
+                    label.htmlFor = checkbox.id;
+                    label.textContent = `${row[0]} ${row[1]} - Plantão Curto`;
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+                    container.appendChild(div);
+                }
                 
-                const opt2 = document.createElement('option');
-                opt2.value = data;
-                opt2.textContent = data;
-                dataDesejadaSelect.appendChild(opt2);
+                if (row[3] === currentUser) {
+                    const div = document.createElement('div');
+                    div.className = 'date-checkbox';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = `${row[0]}_Longo`;
+                    checkbox.id = `date_${row[0]}_Longo`;
+                    const label = document.createElement('label');
+                    label.htmlFor = checkbox.id;
+                    label.textContent = `${row[0]} ${row[1]} - Plantão Longo`;
+                    div.appendChild(checkbox);
+                    div.appendChild(label);
+                    container.appendChild(div);
+                }
             });
         }
 
         // Login
-        window.login = function() {
+        window.login = async function() {
             const userName = document.getElementById('loginSelect').value;
             if (!userName) {
                 alert('Por favor, selecione seu nome');
@@ -639,8 +1027,10 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('app').style.display = 'block';
             
+            await loadNaoTrocarPreferences();
+            loadDropdowns();
             loadEscala();
-            loadDateDropdowns();
+            loadUserAvailableDates();
             loadSolicitacoes();
             loadHistorico();
         };
@@ -654,30 +1044,47 @@
 
         // Enviar solicitação
         window.enviarSolicitacao = async function() {
-            const dataSolicitante = document.getElementById('dataSolicitante').value;
-            const tipoSolicitante = document.getElementById('tipoSolicitante').value;
             const dataDesejada = document.getElementById('dataDesejada').value;
             const tipoDesejado = document.getElementById('tipoDesejado').value;
             const observacoes = document.getElementById('observacoes').value;
             
-            if (!dataSolicitante || !tipoSolicitante || !dataDesejada || !tipoDesejado) {
-                showAlert('Por favor, preencha todos os campos obrigatórios (*)', 'error');
+            if (!dataDesejada || !tipoDesejado) {
+                showAlert('Por favor, preencha o plantão desejado (data e tipo)', 'error');
                 return;
             }
 
-            // Encontrar destinatário baseado na data e tipo desejado
+            // Coletar datas selecionadas
+            const checkboxes = document.querySelectorAll('#datasDisponiveis input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                showAlert('Por favor, selecione pelo menos uma data sua disponível para oferecer', 'error');
+                return;
+            }
+
+            const datasOferecidas = [];
+            checkboxes.forEach(cb => {
+                const [data, tipo] = cb.value.split('_');
+                datasOferecidas.push({ data, tipo });
+            });
+
+            // Encontrar destinatário
             const dataKey = dataDesejada.split(' - ')[0];
             const rowIndex = escalaData.findIndex(row => row[0] === dataKey);
             const destinatario = tipoDesejado === 'Curto' ? escalaData[rowIndex][2] : escalaData[rowIndex][3];
+
+            // Verificar se o destinatário marcou como não trocar
+            if (isNaoTrocar(destinatario, dataKey, tipoDesejado)) {
+                showAlert('⚠️ Esta pessoa marcou que NÃO quer trocar este plantão. Solicitação não pode ser enviada.', 'warning');
+                return;
+            }
             
             try {
                 await addDoc(collection(db, 'solicitacoes'), {
                     solicitante: currentUser,
-                    dataSolicitante,
-                    tipoSolicitante,
                     destinatario,
                     dataDesejada,
                     tipoDesejado,
+                    datasOferecidas,
+                    dataEscolhida: null,
                     observacoes,
                     status: 'Pendente',
                     dataEnvio: serverTimestamp()
@@ -686,11 +1093,10 @@
                 showAlert('✅ Solicitação enviada com sucesso!', 'success');
                 
                 // Limpar formulário
-                document.getElementById('dataSolicitante').value = '';
-                document.getElementById('tipoSolicitante').value = '';
                 document.getElementById('dataDesejada').value = '';
                 document.getElementById('tipoDesejado').value = '';
                 document.getElementById('observacoes').value = '';
+                checkboxes.forEach(cb => cb.checked = false);
                 
             } catch (error) {
                 console.error('Erro ao enviar solicitação:', error);
@@ -698,7 +1104,7 @@
             }
         };
 
-        // Carregar solicitações em tempo real
+        // Carregar solicitações
         function loadSolicitacoes() {
             // Solicitações recebidas
             const qRecebidas = query(
@@ -719,17 +1125,19 @@
                 snapshot.forEach((docSnap) => {
                     const sol = docSnap.data();
                     const dataEnvio = sol.dataEnvio ? new Date(sol.dataEnvio.toDate()).toLocaleDateString('pt-BR') : '-';
+                    const datasOferecidasText = sol.datasOferecidas.map(d => `${d.data} (${d.tipo})`).join(', ');
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${dataEnvio}</td>
                         <td>${sol.solicitante}</td>
-                        <td>${sol.dataSolicitante} (${sol.tipoSolicitante})</td>
                         <td>${sol.dataDesejada} (${sol.tipoDesejado})</td>
+                        <td>${datasOferecidasText}</td>
                         <td><span class="status-badge status-pendente">Pendente</span></td>
                         <td>${sol.observacoes || '-'}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn btn-success" onclick="aprovarSolicitacao('${docSnap.id}', ${JSON.stringify(sol).replace(/"/g, '&quot;')})">Aprovar</button>
+                                <button class="btn btn-success" onclick="openDateModal('${docSnap.id}', '${JSON.stringify(sol.datasOferecidas).replace(/"/g, '&quot;')}')">Aprovar</button>
                                 <button class="btn btn-danger" onclick="recusarSolicitacao('${docSnap.id}')">Recusar</button>
                             </div>
                         </td>
@@ -749,20 +1157,24 @@
                 tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma solicitação enviada</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma solicitação enviada</td></tr>`;
                     return;
                 }
                 
                 snapshot.forEach((docSnap) => {
                     const sol = docSnap.data();
                     const dataEnvio = sol.dataEnvio ? new Date(sol.dataEnvio.toDate()).toLocaleDateString('pt-BR') : '-';
+                    const datasOferecidasText = sol.datasOferecidas.map(d => `${d.data} (${d.tipo})`).join(', ');
+                    const dataEscolhidaText = sol.dataEscolhida ? `${sol.dataEscolhida.data} (${sol.dataEscolhida.tipo})` : '-';
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${dataEnvio}</td>
                         <td>${sol.destinatario}</td>
-                        <td>${sol.dataSolicitante} (${sol.tipoSolicitante})</td>
                         <td>${sol.dataDesejada} (${sol.tipoDesejado})</td>
+                        <td>${datasOferecidasText}</td>
                         <td><span class="status-badge status-${sol.status.toLowerCase()}">${sol.status}</span></td>
+                        <td>${dataEscolhidaText}</td>
                         <td>${sol.observacoes || '-'}</td>
                     `;
                     tbody.appendChild(tr);
@@ -770,24 +1182,74 @@
             });
         }
 
-        // Aprovar solicitação
-        window.aprovarSolicitacao = async function(docId, solData) {
+        // Modal de seleção de data
+        window.openDateModal = function(solicitacaoId, datasJson) {
+            currentSolicitacaoId = solicitacaoId;
+            const datas = JSON.parse(datasJson.replace(/&quot;/g, '"'));
+            
+            const container = document.getElementById('modalDatesContainer');
+            container.innerHTML = '';
+            
+            datas.forEach((d, index) => {
+                const div = document.createElement('div');
+                div.className = 'date-checkbox';
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'selectedDate';
+                radio.value = index;
+                radio.id = `modal_date_${index}`;
+                const label = document.createElement('label');
+                label.htmlFor = radio.id;
+                label.textContent = `${d.data} - Plantão ${d.tipo}`;
+                div.appendChild(radio);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+            
+            document.getElementById('dateSelectModal').style.display = 'flex';
+        };
+
+        window.closeDateModal = function() {
+            document.getElementById('dateSelectModal').style.display = 'none';
+            currentSolicitacaoId = null;
+        };
+
+        window.confirmDateSelection = async function() {
+            const selected = document.querySelector('input[name="selectedDate"]:checked');
+            if (!selected) {
+                alert('Por favor, selecione uma data');
+                return;
+            }
+            
             try {
-                const solRef = doc(db, 'solicitacoes', docId);
+                const solRef = doc(db, 'solicitacoes', currentSolicitacaoId);
+                const solSnap = await getDocs(query(collection(db, 'solicitacoes')));
+                let solData = null;
+                solSnap.forEach(d => {
+                    if (d.id === currentSolicitacaoId) {
+                        solData = d.data();
+                    }
+                });
+                
+                const selectedIndex = parseInt(selected.value);
+                const dataEscolhida = solData.datasOferecidas[selectedIndex];
+                
                 await updateDoc(solRef, {
                     status: 'Aprovada',
+                    dataEscolhida,
                     dataAprovacao: serverTimestamp()
                 });
                 
                 // Adicionar ao histórico
                 await addDoc(collection(db, 'historico'), {
                     pessoa1: solData.solicitante,
-                    plantao1: `${solData.dataSolicitante} (${solData.tipoSolicitante})`,
+                    plantao1: `${dataEscolhida.data} (${dataEscolhida.tipo})`,
                     pessoa2: solData.destinatario,
-                    plantao2: `${solData.dataDesejada} (${solData.tipoDesejado})`,
+                    plantao2: `${solData.dataDesejada.split(' - ')[0]} (${solData.tipoDesejado})`,
                     dataAprovacao: serverTimestamp()
                 });
                 
+                closeDateModal();
                 showAlert('✅ Solicitação aprovada!', 'success');
             } catch (error) {
                 console.error('Erro ao aprovar:', error);
@@ -819,7 +1281,7 @@
                 tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma troca realizada ainda</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma troca realizada ainda</td></tr>`;
                     return;
                 }
                 
@@ -828,7 +1290,6 @@
                     const dataAprov = hist.dataAprovacao ? new Date(hist.dataAprovacao.toDate()).toLocaleDateString('pt-BR') : '-';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${hist.plantao1} ↔ ${hist.plantao2}</td>
                         <td>${hist.pessoa1}</td>
                         <td>${hist.plantao1}</td>
                         <td>${hist.pessoa2}</td>
