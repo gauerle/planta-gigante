@@ -70,10 +70,11 @@
             display: flex;
             background: #f8f9fa;
             border-bottom: 2px solid #dee2e6;
+            overflow-x: auto;
         }
         
         .tab {
-            padding: 15px 30px;
+            padding: 15px 25px;
             cursor: pointer;
             border: none;
             background: none;
@@ -81,6 +82,7 @@
             font-weight: 500;
             color: #495057;
             transition: all 0.3s;
+            white-space: nowrap;
         }
         
         .tab:hover {
@@ -152,12 +154,20 @@
             background: #f8f9fa;
         }
         
-        .feriado {
+        .feriado td {
             background: #fff3cd !important;
         }
         
-        .nao-trocar {
+        .feriado:hover td {
+            background: #ffe8a1 !important;
+        }
+        
+        .nao-trocar td {
             background: #f8d7da !important;
+        }
+        
+        .nao-trocar:hover td {
+            background: #f5c6cb !important;
         }
         
         .checkbox-cell {
@@ -289,6 +299,17 @@
         
         .btn-danger:hover {
             background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
         }
         
         .status-badge {
@@ -451,6 +472,15 @@
             cursor: pointer;
             color: #6c757d;
         }
+
+        .troca-badge {
+            background: #17a2b8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -495,7 +525,8 @@
             
             <div class="tabs">
                 <button class="tab active" onclick="showTab('escala')">📅 Escala Original</button>
-                <button class="tab" onclick="showTab('solicitacoes')">🔄 Solicitações de Troca</button>
+                <button class="tab" onclick="showTab('escalaAtualizada')">📋 Escala Atualizada</button>
+                <button class="tab" onclick="showTab('solicitacoes')">🔄 Solicitações</button>
                 <button class="tab" onclick="showTab('historico')">📊 Histórico</button>
             </div>
             
@@ -505,8 +536,8 @@
                     <ul>
                         <li>Consulte sua escala aqui</li>
                         <li>Use os filtros para encontrar datas ou pessoas específicas</li>
-                        <li>Datas em amarelo são feriados</li>
-                        <li>Marque as datas que você NÃO quer trocar (ficarão em vermelho)</li>
+                        <li>Datas em <strong style="background: #fff3cd; padding: 2px 6px;">amarelo</strong> são feriados</li>
+                        <li>Marque as datas que você NÃO quer trocar (ficarão em <strong style="background: #f8d7da; padding: 2px 6px;">vermelho</strong>)</li>
                     </ul>
                 </div>
 
@@ -543,13 +574,55 @@
                     </table>
                 </div>
             </div>
+
+            <div id="escalaAtualizada" class="tab-content">
+                <div class="instructions">
+                    <h3>📋 Escala Atualizada com Trocas</h3>
+                    <ul>
+                        <li>Esta é a escala REAL considerando as trocas aprovadas</li>
+                        <li>Nomes com <span class="troca-badge">TROCADO</span> indicam que houve troca</li>
+                        <li>Use os filtros para encontrar suas datas atualizadas</li>
+                    </ul>
+                </div>
+
+                <div class="filter-section">
+                    <div class="filter-group form-group">
+                        <label>Filtrar por Nome:</label>
+                        <select id="filterNameAtualizada" onchange="filterEscalaAtualizada()">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group form-group">
+                        <label>Filtrar por Data:</label>
+                        <input type="text" id="filterDateAtualizada" placeholder="Ex: 23/out" oninput="filterEscalaAtualizada()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="btn btn-primary" onclick="clearFiltersAtualizada()">Limpar Filtros</button>
+                    </div>
+                </div>
+                
+                <div class="table-wrapper">
+                    <table id="escalaAtualizadaTable">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Dia</th>
+                                <th>Plantão Curto</th>
+                                <th>Plantão Longo</th>
+                                <th>Feriado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="escalaAtualizadaBody"></tbody>
+                    </table>
+                </div>
+            </div>
             
             <div id="solicitacoes" class="tab-content">
                 <div class="instructions">
                     <h3>🔄 Como solicitar uma troca</h3>
                     <ul>
                         <li>Selecione o plantão que você DESEJA (data e tipo)</li>
-                        <li>Selecione TODAS as datas suas que você está disposto a oferecer em troca</li>
+                        <li>Selecione TODAS as suas datas (do mesmo tipo) que você está disposto a oferecer em troca</li>
                         <li>O destinatário poderá escolher qual das suas datas ele prefere</li>
                     </ul>
                 </div>
@@ -559,13 +632,13 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Plantão DESEJADO - Data *</label>
-                            <select id="dataDesejada">
+                            <select id="dataDesejada" onchange="updateTipoDesejadoOptions()">
                                 <option value="">Selecione...</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Plantão DESEJADO - Tipo *</label>
-                            <select id="tipoDesejado">
+                            <select id="tipoDesejado" onchange="filterAvailableDates()">
                                 <option value="">Selecione...</option>
                                 <option value="Curto">Plantão Curto</option>
                                 <option value="Longo">Plantão Longo</option>
@@ -573,7 +646,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Suas Datas Disponíveis para Oferecer (selecione todas que aceita trocar) *</label>
+                        <label>Suas Datas Disponíveis para Oferecer (mesmo tipo do plantão desejado) *</label>
                         <div class="dates-selection" id="datasDisponiveis"></div>
                     </div>
                     <div class="form-group">
@@ -623,7 +696,13 @@
             </div>
             
             <div id="historico" class="tab-content">
-                <div class="form-title">Trocas Realizadas</div>
+                <div class="instructions">
+                    <h3>📊 Histórico de Trocas</h3>
+                    <ul>
+                        <li>Visualize todas as trocas realizadas</li>
+                        <li>Se você for o dono original da vaga, pode revogar a troca</li>
+                    </ul>
+                </div>
                 <div class="table-wrapper">
                     <table>
                         <thead>
@@ -633,6 +712,7 @@
                                 <th>Pessoa 2</th>
                                 <th>Plantão Pessoa 2</th>
                                 <th>Data Aprovação</th>
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="historicoBody"></tbody>
@@ -660,16 +740,16 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, onSnapshot, orderBy, serverTimestamp, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, onSnapshot, orderBy, serverTimestamp, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // ⚠️ IMPORTANTE: Substitua estas configurações pelas suas do Firebase Console
+        // ⚠️ Estas credenciais são públicas mas estão restritas por domínio no Google Cloud Console
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY_AQUI",
-            authDomain: "seu-projeto.firebaseapp.com",
-            projectId: "seu-projeto-id",
-            storageBucket: "seu-projeto.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef123456"
+            apiKey: "AIzaSyB2VLDwcdyYZBh1G2qsmmOUoCzZfbbjOWw",
+            authDomain: "planta-gigante.firebaseapp.com",
+            projectId: "planta-gigante",
+            storageBucket: "planta-gigante.firebasestorage.app",
+            messagingSenderId: "424711085023",
+            appId: "1:424711085023:web:e7c1e68c28a5dfac856c18"
         };
 
         // Inicializar Firebase
@@ -680,7 +760,7 @@
         const feriados = ['27/out.', '28/out.', '20/nov.', '21/nov.', '08/dez.', '25/dez.', '01/jan.', '02/jan.'];
 
         // Dados da escala completa
-        const escalaData = [
+        const escalaDataOriginal = [
             ["23/out.", "Quinta", "Rian Henrico Alves Ferreira", "Thaisa Ramos Freire"],
             ["24/out.", "Sexta", "Bárbara Geovanna Farias Damião", "Daniella Martins de Oliveira"],
             ["25/out.", "Sábado", "Marilia Escrivani de Almeida Petrillo", "Luís Eduardo Gauer"],
@@ -788,7 +868,7 @@
         let currentUser = null;
         let naoTrocarDates = {};
         let currentSolicitacaoId = null;
-        let selectedOfferDate = null;
+        let trocasAplicadas = {};
 
         // Carregar preferências de não trocar
         async function loadNaoTrocarPreferences() {
@@ -798,11 +878,37 @@
                 naoTrocarDates = {};
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const key = `${data.pessoa}_${data.data}_${data.tipo}`;
-                    naoTrocarDates[key] = true;
+                    if (!data.deleted) {
+                        const key = `${data.pessoa}_${data.data}_${data.tipo}`;
+                        naoTrocarDates[key] = true;
+                    }
                 });
             } catch (error) {
                 console.error('Erro ao carregar preferências:', error);
+            }
+        }
+
+        // Carregar trocas do histórico
+        async function loadTrocas() {
+            try {
+                const q = query(collection(db, 'historico'));
+                const snapshot = await getDocs(q);
+                trocasAplicadas = {};
+                snapshot.forEach(doc => {
+                    const troca = doc.data();
+                    // Extrair data e tipo de cada plantão
+                    const match1 = troca.plantao1.match(/(.+?)\s+\((\w+)\)/);
+                    const match2 = troca.plantao2.match(/(.+?)\s+\((\w+)\)/);
+                    
+                    if (match1 && match2) {
+                        const key1 = `${match1[1]}_${match1[2]}`;
+                        const key2 = `${match2[1]}_${match2[2]}`;
+                        trocasAplicadas[key1] = { pessoa: troca.pessoa2, trocado: true, historicoId: doc.id };
+                        trocasAplicadas[key2] = { pessoa: troca.pessoa1, trocado: true, historicoId: doc.id };
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao carregar trocas:', error);
             }
         }
 
@@ -820,11 +926,15 @@
                     await setDoc(doc(db, 'naoTrocar', key), {
                         pessoa,
                         data,
-                        tipo
+                        tipo,
+                        deleted: false
                     });
                     naoTrocarDates[key] = true;
                 } else {
-                    await updateDoc(doc(db, 'naoTrocar', key), {
+                    await setDoc(doc(db, 'naoTrocar', key), {
+                        pessoa,
+                        data,
+                        tipo,
                         deleted: true
                     });
                     delete naoTrocarDates[key];
@@ -834,12 +944,12 @@
             }
         }
 
-        // Carregar escala
+        // Carregar escala original
         function loadEscala() {
             const tbody = document.getElementById('escalaBody');
             tbody.innerHTML = '';
             
-            escalaData.forEach(row => {
+            escalaDataOriginal.forEach(row => {
                 const tr = document.createElement('tr');
                 const isFeriado = feriados.includes(row[0]);
                 if (isFeriado) tr.classList.add('feriado');
@@ -870,12 +980,17 @@
                         toggleNaoTrocar(currentUser, row[0], 'Curto', this.checked);
                         if (this.checked) {
                             tr.classList.add('nao-trocar');
+                            tr.classList.remove('feriado');
                         } else {
                             tr.classList.remove('nao-trocar');
+                            if (isFeriado) tr.classList.add('feriado');
                         }
                     };
                     tdCheckCurto.appendChild(checkCurto);
-                    if (checkCurto.checked) tr.classList.add('nao-trocar');
+                    if (checkCurto.checked) {
+                        tr.classList.add('nao-trocar');
+                        tr.classList.remove('feriado');
+                    }
                 } else {
                     tdCheckCurto.textContent = '-';
                 }
@@ -897,12 +1012,17 @@
                         toggleNaoTrocar(currentUser, row[0], 'Longo', this.checked);
                         if (this.checked) {
                             tr.classList.add('nao-trocar');
+                            tr.classList.remove('feriado');
                         } else {
                             tr.classList.remove('nao-trocar');
+                            if (isFeriado) tr.classList.add('feriado');
                         }
                     };
                     tdCheckLongo.appendChild(checkLongo);
-                    if (checkLongo.checked) tr.classList.add('nao-trocar');
+                    if (checkLongo.checked) {
+                        tr.classList.add('nao-trocar');
+                        tr.classList.remove('feriado');
+                    }
                 } else {
                     tdCheckLongo.textContent = '-';
                 }
@@ -917,7 +1037,56 @@
             });
         }
 
-        // Filtrar escala
+        // Carregar escala atualizada com trocas
+        function loadEscalaAtualizada() {
+            const tbody = document.getElementById('escalaAtualizadaBody');
+            tbody.innerHTML = '';
+            
+            escalaDataOriginal.forEach(row => {
+                const tr = document.createElement('tr');
+                const isFeriado = feriados.includes(row[0]);
+                if (isFeriado) tr.classList.add('feriado');
+                
+                // Data
+                const tdData = document.createElement('td');
+                tdData.textContent = row[0];
+                tr.appendChild(tdData);
+                
+                // Dia
+                const tdDia = document.createElement('td');
+                tdDia.textContent = row[1];
+                tr.appendChild(tdDia);
+                
+                // Plantão Curto (com troca aplicada)
+                const tdCurto = document.createElement('td');
+                const keyCurto = `${row[0]}_Curto`;
+                if (trocasAplicadas[keyCurto]) {
+                    tdCurto.innerHTML = `${trocasAplicadas[keyCurto].pessoa} <span class="troca-badge">TROCADO</span>`;
+                } else {
+                    tdCurto.textContent = row[2];
+                }
+                tr.appendChild(tdCurto);
+                
+                // Plantão Longo (com troca aplicada)
+                const tdLongo = document.createElement('td');
+                const keyLongo = `${row[0]}_Longo`;
+                if (trocasAplicadas[keyLongo]) {
+                    tdLongo.innerHTML = `${trocasAplicadas[keyLongo].pessoa} <span class="troca-badge">TROCADO</span>`;
+                } else {
+                    tdLongo.textContent = row[3] || '-';
+                }
+                tr.appendChild(tdLongo);
+                
+                // Feriado
+                const tdFeriado = document.createElement('td');
+                tdFeriado.textContent = isFeriado ? 'Sim' : 'Não';
+                tr.appendChild(tdFeriado);
+                
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Filtrar escala original
         window.filterEscala = function() {
             const filterName = document.getElementById('filterName').value.toLowerCase();
             const filterDate = document.getElementById('filterDate').value.toLowerCase();
@@ -943,18 +1112,44 @@
             filterEscala();
         };
 
+        // Filtrar escala atualizada
+        window.filterEscalaAtualizada = function() {
+            const filterName = document.getElementById('filterNameAtualizada').value.toLowerCase();
+            const filterDate = document.getElementById('filterDateAtualizada').value.toLowerCase();
+            const tbody = document.getElementById('escalaAtualizadaBody');
+            const rows = tbody.getElementsByTagName('tr');
+            
+            for (let row of rows) {
+                const cells = row.getElementsByTagName('td');
+                const data = cells[0].textContent.toLowerCase();
+                const curto = cells[2].textContent.toLowerCase();
+                const longo = cells[3].textContent.toLowerCase();
+                
+                const matchDate = !filterDate || data.includes(filterDate);
+                const matchName = !filterName || curto.includes(filterName) || longo.includes(filterName);
+                
+                row.style.display = (matchDate && matchName) ? '' : 'none';
+            }
+        };
+
+        window.clearFiltersAtualizada = function() {
+            document.getElementById('filterNameAtualizada').value = '';
+            document.getElementById('filterDateAtualizada').value = '';
+            filterEscalaAtualizada();
+        };
+
         // Carregar dropdowns
         function loadDropdowns() {
             const pessoas = new Set();
             const datas = [];
             
-            escalaData.forEach(row => {
+            escalaDataOriginal.forEach(row => {
                 pessoas.add(row[2]);
                 if (row[3]) pessoas.add(row[3]);
                 datas.push(row[0] + ' - ' + row[1]);
             });
             
-            // Filtro de nomes
+            // Filtro de nomes (escala original)
             const filterNameSelect = document.getElementById('filterName');
             filterNameSelect.innerHTML = '<option value="">Todos</option>';
             Array.from(pessoas).sort().forEach(pessoa => {
@@ -962,6 +1157,16 @@
                 option.value = pessoa;
                 option.textContent = pessoa;
                 filterNameSelect.appendChild(option);
+            });
+
+            // Filtro de nomes (escala atualizada)
+            const filterNameAtualizadaSelect = document.getElementById('filterNameAtualizada');
+            filterNameAtualizadaSelect.innerHTML = '<option value="">Todos</option>';
+            Array.from(pessoas).sort().forEach(pessoa => {
+                const option = document.createElement('option');
+                option.value = pessoa;
+                option.textContent = pessoa;
+                filterNameAtualizadaSelect.appendChild(option);
             });
             
             // Data desejada
@@ -975,14 +1180,51 @@
             });
         }
 
-        // Carregar datas disponíveis do usuário
-        function loadUserAvailableDates() {
+        // Atualizar opções de tipo baseado na data selecionada
+        window.updateTipoDesejadoOptions = function() {
+            const dataDesejada = document.getElementById('dataDesejada').value;
+            const tipoDesejadoSelect = document.getElementById('tipoDesejado');
+            
+            if (!dataDesejada) {
+                tipoDesejadoSelect.innerHTML = '<option value="">Selecione...</option><option value="Curto">Plantão Curto</option><option value="Longo">Plantão Longo</option>';
+                return;
+            }
+
+            const dataKey = dataDesejada.split(' - ')[0];
+            const rowIndex = escalaDataOriginal.findIndex(row => row[0] === dataKey);
+            const row = escalaDataOriginal[rowIndex];
+
+            tipoDesejadoSelect.innerHTML = '<option value="">Selecione...</option>';
+            
+            if (row[2]) {
+                tipoDesejadoSelect.innerHTML += '<option value="Curto">Plantão Curto</option>';
+            }
+            if (row[3]) {
+                tipoDesejadoSelect.innerHTML += '<option value="Longo">Plantão Longo</option>';
+            }
+        };
+
+        // Filtrar datas disponíveis baseado no tipo selecionado
+        window.filterAvailableDates = function() {
+            const tipoDesejado = document.getElementById('tipoDesejado').value;
+            loadUserAvailableDates(tipoDesejado);
+        };
+
+        // Carregar datas disponíveis do usuário (filtradas por tipo)
+        function loadUserAvailableDates(tipoFiltro = null) {
             const container = document.getElementById('datasDisponiveis');
             container.innerHTML = '';
             
-            escalaData.forEach(row => {
-                // Verificar se o usuário está nesta data (curto ou longo)
-                if (row[2] === currentUser) {
+            if (!tipoFiltro) {
+                container.innerHTML = '<p style="color: #6c757d; padding: 10px;">Selecione o tipo de plantão desejado primeiro</p>';
+                return;
+            }
+            
+            let hasOptions = false;
+            escalaDataOriginal.forEach(row => {
+                // Verificar se o usuário está nesta data (curto ou longo) e se é do tipo correto
+                if (row[2] === currentUser && tipoFiltro === 'Curto') {
+                    hasOptions = true;
                     const div = document.createElement('div');
                     div.className = 'date-checkbox';
                     const checkbox = document.createElement('input');
@@ -997,7 +1239,8 @@
                     container.appendChild(div);
                 }
                 
-                if (row[3] === currentUser) {
+                if (row[3] === currentUser && tipoFiltro === 'Longo') {
+                    hasOptions = true;
                     const div = document.createElement('div');
                     div.className = 'date-checkbox';
                     const checkbox = document.createElement('input');
@@ -1012,6 +1255,10 @@
                     container.appendChild(div);
                 }
             });
+
+            if (!hasOptions) {
+                container.innerHTML = '<p style="color: #6c757d; padding: 10px;">Você não tem plantões deste tipo disponíveis</p>';
+            }
         }
 
         // Login
@@ -1028,8 +1275,10 @@
             document.getElementById('app').style.display = 'block';
             
             await loadNaoTrocarPreferences();
+            await loadTrocas();
             loadDropdowns();
             loadEscala();
+            loadEscalaAtualizada();
             loadUserAvailableDates();
             loadSolicitacoes();
             loadHistorico();
@@ -1068,8 +1317,8 @@
 
             // Encontrar destinatário
             const dataKey = dataDesejada.split(' - ')[0];
-            const rowIndex = escalaData.findIndex(row => row[0] === dataKey);
-            const destinatario = tipoDesejado === 'Curto' ? escalaData[rowIndex][2] : escalaData[rowIndex][3];
+            const rowIndex = escalaDataOriginal.findIndex(row => row[0] === dataKey);
+            const destinatario = tipoDesejado === 'Curto' ? escalaDataOriginal[rowIndex][2] : escalaDataOriginal[rowIndex][3];
 
             // Verificar se o destinatário marcou como não trocar
             if (isNaoTrocar(destinatario, dataKey, tipoDesejado)) {
@@ -1097,6 +1346,7 @@
                 document.getElementById('tipoDesejado').value = '';
                 document.getElementById('observacoes').value = '';
                 checkboxes.forEach(cb => cb.checked = false);
+                loadUserAvailableDates();
                 
             } catch (error) {
                 console.error('Erro ao enviar solicitação:', error);
@@ -1137,7 +1387,7 @@
                         <td>${sol.observacoes || '-'}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn btn-success" onclick="openDateModal('${docSnap.id}', '${JSON.stringify(sol.datasOferecidas).replace(/"/g, '&quot;')}')">Aprovar</button>
+                                <button class="btn btn-success" onclick="openDateModal('${docSnap.id}', '${JSON.stringify(sol.datasOferecidas).replace(/"/g, '&quot;')}', '${sol.solicitante}', '${sol.dataDesejada}', '${sol.tipoDesejado}')">Aprovar</button>
                                 <button class="btn btn-danger" onclick="recusarSolicitacao('${docSnap.id}')">Recusar</button>
                             </div>
                         </td>
@@ -1183,8 +1433,14 @@
         }
 
         // Modal de seleção de data
-        window.openDateModal = function(solicitacaoId, datasJson) {
+        let currentSolicitacaoData = null;
+        window.openDateModal = function(solicitacaoId, datasJson, solicitante, dataDesejada, tipoDesejado) {
             currentSolicitacaoId = solicitacaoId;
+            currentSolicitacaoData = {
+                solicitante,
+                dataDesejada,
+                tipoDesejado
+            };
             const datas = JSON.parse(datasJson.replace(/&quot;/g, '"'));
             
             const container = document.getElementById('modalDatesContainer');
@@ -1198,6 +1454,8 @@
                 radio.name = 'selectedDate';
                 radio.value = index;
                 radio.id = `modal_date_${index}`;
+                radio.dataset.data = d.data;
+                radio.dataset.tipo = d.tipo;
                 const label = document.createElement('label');
                 label.htmlFor = radio.id;
                 label.textContent = `${d.data} - Plantão ${d.tipo}`;
@@ -1212,6 +1470,7 @@
         window.closeDateModal = function() {
             document.getElementById('dateSelectModal').style.display = 'none';
             currentSolicitacaoId = null;
+            currentSolicitacaoData = null;
         };
 
         window.confirmDateSelection = async function() {
@@ -1223,16 +1482,11 @@
             
             try {
                 const solRef = doc(db, 'solicitacoes', currentSolicitacaoId);
-                const solSnap = await getDocs(query(collection(db, 'solicitacoes')));
-                let solData = null;
-                solSnap.forEach(d => {
-                    if (d.id === currentSolicitacaoId) {
-                        solData = d.data();
-                    }
-                });
                 
-                const selectedIndex = parseInt(selected.value);
-                const dataEscolhida = solData.datasOferecidas[selectedIndex];
+                const dataEscolhida = {
+                    data: selected.dataset.data,
+                    tipo: selected.dataset.tipo
+                };
                 
                 await updateDoc(solRef, {
                     status: 'Aprovada',
@@ -1242,15 +1496,25 @@
                 
                 // Adicionar ao histórico
                 await addDoc(collection(db, 'historico'), {
-                    pessoa1: solData.solicitante,
+                    pessoa1: currentSolicitacaoData.solicitante,
                     plantao1: `${dataEscolhida.data} (${dataEscolhida.tipo})`,
-                    pessoa2: solData.destinatario,
-                    plantao2: `${solData.dataDesejada.split(' - ')[0]} (${solData.tipoDesejado})`,
+                    pessoa1Original: currentSolicitacaoData.solicitante,
+                    plantao1Data: dataEscolhida.data,
+                    plantao1Tipo: dataEscolhida.tipo,
+                    pessoa2: currentUser,
+                    plantao2: `${currentSolicitacaoData.dataDesejada.split(' - ')[0]} (${currentSolicitacaoData.tipoDesejado})`,
+                    pessoa2Original: currentUser,
+                    plantao2Data: currentSolicitacaoData.dataDesejada.split(' - ')[0],
+                    plantao2Tipo: currentSolicitacaoData.tipoDesejado,
                     dataAprovacao: serverTimestamp()
                 });
                 
                 closeDateModal();
                 showAlert('✅ Solicitação aprovada!', 'success');
+                
+                // Recarregar trocas e escala atualizada
+                await loadTrocas();
+                loadEscalaAtualizada();
             } catch (error) {
                 console.error('Erro ao aprovar:', error);
                 showAlert('Erro ao aprovar solicitação', 'error');
@@ -1281,7 +1545,7 @@
                 tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma troca realizada ainda</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 40px;">Nenhuma troca realizada ainda</td></tr>`;
                     return;
                 }
                 
@@ -1289,17 +1553,43 @@
                     const hist = docSnap.data();
                     const dataAprov = hist.dataAprovacao ? new Date(hist.dataAprovacao.toDate()).toLocaleDateString('pt-BR') : '-';
                     const tr = document.createElement('tr');
+                    
+                    // Verificar se o usuário atual é o dono original de alguma das vagas
+                    const podeRevogar = (hist.pessoa1Original === currentUser) || (hist.pessoa2Original === currentUser);
+                    
                     tr.innerHTML = `
                         <td>${hist.pessoa1}</td>
                         <td>${hist.plantao1}</td>
                         <td>${hist.pessoa2}</td>
                         <td>${hist.plantao2}</td>
                         <td>${dataAprov}</td>
+                        <td>
+                            ${podeRevogar ? `<button class="btn btn-warning" onclick="revogarTroca('${docSnap.id}')">Revogar</button>` : '-'}
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
             });
         }
+
+        // Revogar troca
+        window.revogarTroca = async function(historicoId) {
+            if (!confirm('Tem certeza que deseja revogar esta troca? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            try {
+                await deleteDoc(doc(db, 'historico', historicoId));
+                showAlert('✅ Troca revogada com sucesso!', 'success');
+                
+                // Recarregar trocas e escala atualizada
+                await loadTrocas();
+                loadEscalaAtualizada();
+            } catch (error) {
+                console.error('Erro ao revogar troca:', error);
+                showAlert('Erro ao revogar troca', 'error');
+            }
+        };
 
         // Mostrar alerta
         function showAlert(message, type) {
